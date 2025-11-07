@@ -1,0 +1,22 @@
+html, body, #root { height: 100%; }
+body{
+  margin: 0;
+  background:
+    radial-gradient(1200px 800px at 15% 10%, #e8f1ff, transparent 60%),
+    radial-gradient(1200px 800px at 85% 90%, #edf7ec, transparent 60%),
+    #f7f9fb;
+}
+
+/* soft page vignette like the screenshot */
+body::after{
+  content:"";
+  position:fixed; inset:0; pointer-events:none;
+  background:
+    radial-gradient(60vw 60vh at 50% -10%, rgba(0,0,0,.06), transparent 60%),
+    radial-gradient(60vw 60vh at 50% 110%, rgba(0,0,0,.06), transparent 60%);
+}
+
+/* optional: make the login card corners extra soft */
+.loginCard {
+  border-radius: 36px !important;
+}
