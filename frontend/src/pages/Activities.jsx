@@ -57,7 +57,7 @@ export default function Activities(){
             <Grid item xs={12} md={6}>
               <TextField select fullWidth required label="Budget Line"
                 value={form.budget_line_id} onChange={e=>setForm(f=>({...f, budget_line_id:e.target.value}))}
-                SelectProps={{ displayEmpty: true }} sx={fieldSx}
+                 sx={fieldSx}
                 helperText="Select the parent Budget Line">
                 <MenuItem value="" disabled>— Select Budget Line —</MenuItem>
                 {lines.map(bl => <MenuItem key={bl.id} value={bl.id}>{bl.code} — {bl.name}</MenuItem>)}
@@ -95,7 +95,7 @@ export default function Activities(){
         <Grid container spacing={2} sx={{ mb:2 }}>
           <Grid item xs={12} md={6}>
             <TextField select fullWidth label="Filter by Budget Line" value={filterLine}
-              onChange={e=>setFilterLine(e.target.value)} SelectProps={{ displayEmpty: true }}>
+              onChange={e=>setFilterLine(e.target.value)}  helperText="Filter By  Budget Line">
               <MenuItem value="">— All Budget Lines —</MenuItem>
               {lines.map(bl => <MenuItem key={bl.id} value={bl.id}>{bl.code} — {bl.name}</MenuItem>)}
             </TextField>

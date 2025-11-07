@@ -112,7 +112,7 @@ export default function BudgetCreate(){
             {scope==='hospital' ? (
               <Grid item xs={12} md={6}>
                 <TextField select fullWidth label="Hospital" required value={form.hospital_id}
-                  onChange={onChange} name="hospital_id" SelectProps={{ displayEmpty: true }} sx={fieldSx}
+                  onChange={onChange} name="hospital_id"  sx={fieldSx}
                   placeholder="Select a hospital" helperText="Budget is attached to this hospital.">
                   <MenuItem value="" disabled>— Select Hospital —</MenuItem>
                   {hospitals.map(h => <MenuItem key={h.id} value={h.id}>{h.name} ({h.code})</MenuItem>)}
@@ -121,7 +121,7 @@ export default function BudgetCreate(){
             ) : (
               <Grid item xs={12} md={6}>
                 <TextField select fullWidth label="Facility" required value={form.facility_id}
-                  onChange={onChange} name="facility_id" SelectProps={{ displayEmpty: true }} sx={fieldSx}
+                  onChange={onChange} name="facility_id"  sx={fieldSx}
                   placeholder="Select a facility" helperText="Budget is attached to this facility.">
                   <MenuItem value="" disabled>— Select Facility —</MenuItem>
                   {facilities.map(f => <MenuItem key={f.id} value={f.id}>{f.name} ({f.code})</MenuItem>)}
@@ -132,7 +132,7 @@ export default function BudgetCreate(){
             {/* Level */}
             <Grid item xs={12} md={6}>
               <TextField select fullWidth label="Level" name="level" value={form.level}
-                onChange={onChange} SelectProps={{ displayEmpty: true }} sx={fieldSx}
+                onChange={onChange}  sx={fieldSx}
                 placeholder="Pick the level" helperText="National/Province Referral, District Hospital or Health Centre.">
                 <MenuItem value="">— Select Level —</MenuItem>
                 {FacilityLevels.map(l => <MenuItem key={l} value={l}>{l}</MenuItem>)}
@@ -142,7 +142,7 @@ export default function BudgetCreate(){
             {/* Budget Line + Activity */}
             <Grid item xs={12} md={6}>
               <TextField select fullWidth required label="Budget Line" name="budget_line_id" value={form.budget_line_id}
-                onChange={onChange} SelectProps={{ displayEmpty: true }} sx={fieldSx}
+                onChange={onChange}  sx={fieldSx}
                 placeholder="Select a budget line" helperText="Pick the parent budget line.">
                 <MenuItem value="" disabled>— Select Budget Line —</MenuItem>
                 {lines.map(bl => <MenuItem key={bl.id} value={bl.id}>{bl.code} — {bl.name}</MenuItem>)}
@@ -151,7 +151,7 @@ export default function BudgetCreate(){
 
             <Grid item xs={12} md={6}>
               <TextField select fullWidth required label="Activity" name="activity_id" value={form.activity_id}
-                onChange={onChange} SelectProps={{ displayEmpty: true }} sx={fieldSx}
+                onChange={onChange}  sx={fieldSx}
                 placeholder="Select an activity" helperText="Activities are filtered by the selected budget line.">
                 <MenuItem value="" disabled>— Select Activity —</MenuItem>
                 {activities.map(a => <MenuItem key={a.id} value={a.id}>{a.code} — {a.name}</MenuItem>)}
