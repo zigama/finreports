@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: financial_reporting_db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432" # host:container (optional; for connecting from host)
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - fr_net
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financial_reporting_api
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - "5050:5050"  # expose API to your frontend / host
+    networks:
+      - fr_net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frp_frontend
+    depends_on:
+      - backend
+    # Port exposed to the outside world
+    ports:
+      - "8086:80"
+    # Build-time env for Vite (baked into bundle)
+    environment:
+      VITE_API_BASE: "http://backend:5050"
+    networks:
+      - fr_net
+
+
+volumes:
+  db_data:
+
+networks:
+  fr_net:
+

@@ -1,5 +1,5 @@
 // src/api/client.js
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5050';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5050' || '/api';
 const TOKEN_KEY = 'frp_token';
 
 // ---- Token helpers ----
