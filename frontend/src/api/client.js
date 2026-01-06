@@ -225,5 +225,43 @@ export const cashbook = {
   },
 };
 
+// ============================================================
+// ✅ Users (registration + editing)
+// ============================================================
+// Change this if your backend uses another path (e.g. "/users")
+const USERS_BASE = '/admin/users';
+
+export const users = {
+  // list users (optional search)
+  list: (q = '') => request(`${USERS_BASE}${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+
+  // get one user by id
+  get: (id) => request(`${USERS_BASE}/${id}`),
+
+  // register/create user
+  // payload example:
+  // { username, password, access_level, country_id?, hospital_id?, facility_id? }
+  create: (payload) => request(`${USERS_BASE}`, { method: 'POST', body: payload }),
+
+  // update user (edit)
+  // payload example:
+  // { username?, password?, access_level?, country_id?, hospital_id?, facility_id? }
+  update: (id, payload) => request(`${USERS_BASE}/${id}`, { method: 'PUT', body: payload }),
+
+  // optional delete
+  remove: (id) => request(`${USERS_BASE}/${id}`, { method: 'DELETE' }),
+
+    // password reset
+  resetPassword: (id, payload) => request(`${USERS_BASE}/${id}/reset-password`, { method: 'POST', body: payload }),
+
+  // activate/deactivate
+  setActive: (id, payload) => request(`${USERS_BASE}/${id}/status`, { method: 'PATCH', body: payload }),
+
+  // helpers for dropdowns (reusing catalog)
+  countries: () => catalog.countries(),
+  hospitals: (filters = {}) => catalog.hospitals(filters),
+  facilities: (filters = {}) => catalog.facilities(filters),
+};
+
 export { API_BASE };
-export default { request, api, catalog, budgeting, cashbook, login, logout, getToken, setToken, API_BASE };
+export default { request, api, catalog, budgeting, cashbook, users, login, logout, getToken, setToken, API_BASE };

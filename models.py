@@ -1,9 +1,24 @@
 from datetime import datetime, date
 from werkzeug.security import generate_password_hash, check_password_hash
 from decimal import Decimal
-from sqlalchemy import (Integer, String, Enum, ForeignKey, Date, Numeric, Float, Text, DateTime, func,
-                        UniqueConstraint, Index, select, and_, CheckConstraint)
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session, validates
+from sqlalchemy import (
+    Integer,
+    String,
+    Enum,
+    ForeignKey,
+    Date,
+    Numeric,
+    Float,
+    Text,
+    DateTime,
+    func,
+    UniqueConstraint,
+    Index,
+    select,
+    and_,
+    CheckConstraint,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 import enum
 from typing import Optional
 import re
@@ -12,11 +27,17 @@ import re
 class Base(DeclarativeBase):
     pass
 
+
+# --- Facility levels (hospitals / health centres) ---
+
 class FacilityLevelEnum(str, enum.Enum):
     NATIONAL_REFERRAL = "National Referral Hospital"
     PROVINCIAL_REFERRAL = "Province Referral Hospital"
     DISTRICT_HOSPITAL = "District Hospital"
     HEALTH_CENTRE = "Health Centre"
+
+
+# --- Geo ---
 
 class Country(Base):
     __tablename__ = "country"
@@ -24,7 +45,10 @@ class Country(Base):
     name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     code: Mapped[str] = mapped_column(String(10), unique=True, nullable=False)
 
-    provinces: Mapped[list["Province"]] = relationship("Province", back_populates="country", cascade="all,delete-orphan")
+    provinces: Mapped[list["Province"]] = relationship(
+        "Province", back_populates="country", cascade="all,delete-orphan"
+    )
+
 
 class Province(Base):
     __tablename__ = "province"
@@ -34,7 +58,10 @@ class Province(Base):
     country_id: Mapped[int] = mapped_column(ForeignKey("country.id"), nullable=False)
 
     country: Mapped[Country] = relationship("Country", back_populates="provinces")
-    districts: Mapped[list["District"]] = relationship("District", back_populates="province", cascade="all,delete-orphan")
+    districts: Mapped[list["District"]] = relationship(
+        "District", back_populates="province", cascade="all,delete-orphan"
+    )
+
 
 class District(Base):
     __tablename__ = "district"
@@ -44,6 +71,7 @@ class District(Base):
     province_id: Mapped[int] = mapped_column(ForeignKey("province.id"), nullable=False)
 
     province: Mapped[Province] = relationship("Province", back_populates="districts")
+
 
 class Hospital(Base):
     __tablename__ = "hospital"
@@ -57,7 +85,7 @@ class Hospital(Base):
     province: Mapped[Province] = relationship()
     district: Mapped[District] = relationship()
 
-# If you already had Facility, extend it; otherwise add this:
+
 class Facility(Base):
     __tablename__ = "facility"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -74,6 +102,10 @@ class Facility(Base):
     province: Mapped[Province] = relationship()
     district: Mapped[District] = relationship()
     referral_hospital: Mapped[Hospital] = relationship()
+
+
+# --- Budget catalogue ---
+
 class BudgetLine(Base):
     __tablename__ = "budget_lines"
 
@@ -82,11 +114,10 @@ class BudgetLine(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
 
-    # one-to-many
     activities: Mapped[list["Activity"]] = relationship(
         "Activity",
         back_populates="budget_line",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self):
@@ -98,7 +129,10 @@ class Activity(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     budget_line_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("budget_lines.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer,
+        ForeignKey("budget_lines.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     code: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -114,39 +148,29 @@ class Activity(Base):
         return f"<Activity {self.code} - {self.name}>"
 
 
+# --- Budget records ---
+
 class Budget(Base):
-    """
-    A line in the consolidated budget tied to hospital/facility + (budget line, activity),
-    with detailed planning columns.
-    """
     __tablename__ = "budgets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # Links
     hospital_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("hospital.id"), index=True)
     facility_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("facility.id"), index=True)
     budget_line_id: Mapped[int] = mapped_column(Integer, ForeignKey("budget_lines.id"), nullable=False, index=True)
     activity_id: Mapped[int] = mapped_column(Integer, ForeignKey("activities.id"), nullable=False, index=True)
 
-    # Detail fields
     activity_description: Mapped[str | None] = mapped_column(Text)
-
-    # Level e.g. “National Referral Hospital / Province Referral Hospital / District Hospital / Health Centre”
     level: Mapped[str | None] = mapped_column(String(64), index=True)
 
-    # Estimations
     estimated_number_quantity: Mapped[float | None] = mapped_column(Float)
     estimated_frequency_occurrence: Mapped[float | None] = mapped_column(Float)
 
-    # Monetary
     unit_price_usd: Mapped[Numeric | None] = mapped_column(Numeric(14, 2))
-    cost_per_unit_rwf: Mapped[Numeric | None] = mapped_column(Numeric(14, 2))  # “Frw”
+    cost_per_unit_rwf: Mapped[Numeric | None] = mapped_column(Numeric(14, 2))
 
-    # Share/effort
     percent_effort_share: Mapped[float | None] = mapped_column(Float)
 
-    # Components
     component_1: Mapped[Numeric | None] = mapped_column(Numeric(14, 2))
     component_2: Mapped[Numeric | None] = mapped_column(Numeric(14, 2))
     component_3: Mapped[Numeric | None] = mapped_column(Numeric(14, 2))
@@ -154,15 +178,14 @@ class Budget(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships (optional for convenience)
     budget_line: Mapped["BudgetLine"] = relationship("BudgetLine")
     activity: Mapped["Activity"] = relationship("Activity")
-    # hospital/facility relationships if you want:
-    # hospital: Mapped["Hospital"] = relationship("Hospital")
-    # facility: Mapped["Facility"] = relationship("Facility")
 
     def __repr__(self):
         return f"<Budget id={self.id} BL={self.budget_line_id} ACT={self.activity_id}>"
+
+
+# --- Quarter, cashbook entry, obligations etc (old model) ---
 
 class Quarter(Base):
     __tablename__ = "quarter"
@@ -175,16 +198,18 @@ class Quarter(Base):
 
     facility = relationship("Facility")
 
+
 class QuarterLine(Base):
     __tablename__ = "quarter_line"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     quarter_id: Mapped[int] = mapped_column(ForeignKey("quarter.id"), nullable=False)
-    planned: Mapped[float | None] = mapped_column(Numeric(16,2))
-    actual: Mapped[float | None] = mapped_column(Numeric(16,2))
-    variance: Mapped[float | None] = mapped_column(Numeric(16,2))
+    planned: Mapped[float | None] = mapped_column(Numeric(16, 2))
+    actual: Mapped[float | None] = mapped_column(Numeric(16, 2))
+    variance: Mapped[float | None] = mapped_column(Numeric(16, 2))
     comments: Mapped[str | None] = mapped_column(Text)
 
     quarter = relationship("Quarter")
+
 
 class CashbookEntry(Base):
     __tablename__ = "cashbook_entry"
@@ -195,11 +220,12 @@ class CashbookEntry(Base):
     txn_date: Mapped[Date] = mapped_column(Date)
     reference: Mapped[str | None] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(String(400))
-    inflow: Mapped[float | None] = mapped_column(Numeric(16,2))
-    outflow: Mapped[float | None] = mapped_column(Numeric(16,2))
-    balance: Mapped[float | None] = mapped_column(Numeric(16,2))
+    inflow: Mapped[float | None] = mapped_column(Numeric(16, 2))
+    outflow: Mapped[float | None] = mapped_column(Numeric(16, 2))
+    balance: Mapped[float | None] = mapped_column(Numeric(16, 2))
 
     facility = relationship("Facility")
+
 
 class Obligation(Base):
     __tablename__ = "obligation"
@@ -210,20 +236,22 @@ class Obligation(Base):
     vendor: Mapped[str | None] = mapped_column(String(200))
     invoice_no: Mapped[str | None] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(String(400))
-    amount: Mapped[float | None] = mapped_column(Numeric(16,2))
+    amount: Mapped[float | None] = mapped_column(Numeric(16, 2))
     status: Mapped[str | None] = mapped_column(String(50))
 
     facility = relationship("Facility")
+
 
 class Reallocation(Base):
     __tablename__ = "reallocation"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     facility_id: Mapped[int] = mapped_column(ForeignKey("facility.id"), nullable=False)
     date: Mapped[Date | None] = mapped_column(Date)
-    from_budget_line_id: Mapped[int | None] = mapped_column(ForeignKey("budget_line.id"))
-    to_budget_line_id: Mapped[int | None] = mapped_column(ForeignKey("budget_line.id"))
-    amount: Mapped[float | None] = mapped_column(Numeric(16,2))
+    from_budget_line_id: Mapped[int | None] = mapped_column(ForeignKey("budget_lines.id"))
+    to_budget_line_id: Mapped[int | None] = mapped_column(ForeignKey("budget_lines.id"))
+    amount: Mapped[float | None] = mapped_column(Numeric(16, 2))
     reason: Mapped[str | None] = mapped_column(Text)
+
 
 class Redirection(Base):
     __tablename__ = "redirection"
@@ -232,30 +260,8 @@ class Redirection(Base):
     date: Mapped[Date | None] = mapped_column(Date)
     from_component: Mapped[str | None] = mapped_column(String(120))
     to_component: Mapped[str | None] = mapped_column(String(120))
-    amount: Mapped[float | None] = mapped_column(Numeric(16,2))
+    amount: Mapped[float | None] = mapped_column(Numeric(16, 2))
     reason: Mapped[str | None] = mapped_column(Text)
-
-
-class User(Base):
-    __tablename__ = "auth_user"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    username: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[str | None] = mapped_column(String(50))  # e.g., 'admin','editor','viewer'
-
-    def set_password(self, raw: str):
-        self.password_hash = generate_password_hash(raw)
-
-    def check_password(self, raw: str) -> bool:
-        return check_password_hash(self.password_hash, raw)
-
-
-class TokenBlocklist(Base):
-    __tablename__ = "token_blocklist"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    jti: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)  # JWT ID
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (UniqueConstraint("jti", name="uq_tokenblocklist_jti"),)
 
 
 # ---- Enums ----
@@ -278,6 +284,14 @@ class AccountTypeEnum(enum.Enum):
     CASH = "CASH"
 
 
+class AccessLevelEnum(str, enum.Enum):
+    COUNTRY = "COUNTRY"   # can see all data
+    PROVINCE = "PROVINCE"  # all data in that province
+    DISTRICT = "DISTRICT"
+    HOSPITAL = "HOSPITAL" # (reserved for future finer-grain)
+    FACILITY = "FACILITY" # restricted to one facility
+
+
 # ---- Helpers ----
 
 def quarter_from_date(d: date) -> QuarterEnum:
@@ -292,11 +306,9 @@ def quarter_from_date(d: date) -> QuarterEnum:
 
 
 def initials_from_name(name: str) -> str:
-    # Take the first letters of consonant-ish “chunks”, fallback to first 3 letters.
     cleaned = re.sub(r"[^A-Za-z]", "", name or "").upper()
     if not cleaned:
         return "XXX"
-    # Prefer taking first letter + next letters after vowels to capture “KAGEYO” -> K G Y -> KGY
     parts = re.split(r"[AEIOU]+", cleaned)
     letters = "".join(p[0] for p in parts if p)[:3]
     if len(letters) < 3:
@@ -312,22 +324,17 @@ class Account(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     type: Mapped[AccountTypeEnum] = mapped_column(Enum(AccountTypeEnum), nullable=False)
-    # optional banking details
     bank_name: Mapped[Optional[str]] = mapped_column(String(160))
     account_number: Mapped[Optional[str]] = mapped_column(String(64), index=True)
-    # optional momo details
     mobile_provider: Mapped[Optional[str]] = mapped_column(String(64))
 
     facility_id: Mapped[int | None] = mapped_column(ForeignKey("facility.id"), nullable=True)
     hospital_id: Mapped[int | None] = mapped_column(ForeignKey("hospital.id"), nullable=True)
 
-    # “current” balance for fast reads; we’ll keep it in sync.
     current_balance: Mapped[Optional[Numeric]] = mapped_column(Numeric(14, 2), default=0)
 
     facility: Mapped[Optional[Facility]] = relationship()
     hospital: Mapped[Optional[Hospital]] = relationship()
-
-    # Guard against neither/ both being set? Optional; leave flexible across orgs.
 
 
 # ---- Cashbook ----
@@ -373,17 +380,16 @@ class Cashbook(Base):
     cash_in: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     cash_out: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
 
-    # MUST be non-null; set in prepare_for_insert / recalc_account_balances
     balance: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
     created_at: Mapped[date] = mapped_column(
-      Date, server_default=func.current_date(), nullable=False
+        Date, server_default=func.current_date(), nullable=False
     )
     updated_at: Mapped[date] = mapped_column(
-      Date,
-      server_default=func.current_date(),
-      onupdate=func.current_date(),
-      nullable=False,
+        Date,
+        server_default=func.current_date(),
+        onupdate=func.current_date(),
+        nullable=False,
     )
 
     hospital: Mapped[Hospital | None] = relationship()
@@ -408,11 +414,8 @@ class Cashbook(Base):
         ),
     )
 
-    # ---------- business logic ----------
-
     @classmethod
-    def _quarter_from_date(cls, dt):
-        """Return 'Q1'..'Q4' from a date."""
+    def _quarter_from_date(cls, dt: date) -> str:
         if dt is None:
             raise ValueError("transaction_date is required to determine quarter")
         m = dt.month
@@ -426,44 +429,29 @@ class Cashbook(Base):
 
     @classmethod
     def set_quarter(cls, cb: "Cashbook") -> None:
-        """
-        Normalize cb.quarter based on cb.transaction_date into QuarterEnum.
-        Used by both insert and update.
-        """
         if cb.transaction_date is None:
             raise ValueError("transaction_date is required to determine quarter")
 
-        q_code = cls._quarter_from_date(cb.transaction_date)  # "Q1".."Q4"
+        q_code = cls._quarter_from_date(cb.transaction_date)
 
-        # QuarterEnum may be defined with names or values.
-        # Try both patterns to be safe.
         try:
-            cb.quarter = QuarterEnum[q_code]      # if members are QuarterEnum.Q1, etc.
+            cb.quarter = QuarterEnum[q_code]
         except KeyError:
-            cb.quarter = QuarterEnum(q_code)      # if values are "Q1","Q2",...
+            cb.quarter = QuarterEnum(q_code)
 
     @classmethod
     def prepare_for_insert(cls, sess: Session, cb: "Cashbook") -> None:
-        """
-        Must be called BEFORE flush.
-        Ensures: quarter, reference, and a non-null balance.
-        """
-
-        # 1) Quarter
         if cb.quarter is None:
             cls.set_quarter(cb)
         elif isinstance(cb.quarter, str):
-            # normalize stray strings into QuarterEnum
             try:
                 cb.quarter = QuarterEnum[cb.quarter]
             except KeyError:
                 cb.quarter = QuarterEnum(cb.quarter)
 
-        # 2) Reference
         if not cb.reference:
             cb.reference = cls._generate_reference(sess, cb)
 
-        # 3) Provisional running balance
         if cb.balance is None:
             last = (
                 sess.query(cls)
@@ -472,7 +460,6 @@ class Cashbook(Base):
                 .first()
             )
 
-            from decimal import Decimal
             prev = Decimal(last.balance) if last else Decimal("0")
             ci = Decimal(cb.cash_in or 0)
             co = Decimal(cb.cash_out or 0)
@@ -497,7 +484,6 @@ class Cashbook(Base):
 
     @classmethod
     def _generate_reference(cls, sess: Session, cb: "Cashbook") -> str:
-        # Replace with your actual generator; this is a safe placeholder.
         prefix = "CBK"
         d = cb.transaction_date.strftime("%Y%m%d")
         count = (
@@ -510,3 +496,38 @@ class Cashbook(Base):
         )
         return f"{prefix}-{d}-{count + 1:04d}"
 
+
+# ---- Users & auth ----
+
+class User(Base):
+    __tablename__ = "auth_user"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    access_level: Mapped[AccessLevelEnum] = mapped_column(
+        Enum(AccessLevelEnum),
+        nullable=False,
+        default=AccessLevelEnum.FACILITY,
+    )
+    country_id: Mapped[int | None] = mapped_column(ForeignKey("country.id"), nullable=True)
+    hospital_id: Mapped[int | None] = mapped_column(ForeignKey("hospital.id"), nullable=True)
+    facility_id: Mapped[int | None] = mapped_column(ForeignKey("facility.id"), nullable=True)
+
+    country: Mapped[Country | None] = relationship("Country")
+    hospital: Mapped[Hospital | None] = relationship("Hospital")
+    facility: Mapped[Facility | None] = relationship("Facility")
+
+    def set_password(self, raw: str):
+        self.password_hash = generate_password_hash(raw)
+
+    def check_password(self, raw: str) -> bool:
+        return check_password_hash(self.password_hash, raw)
+
+
+class TokenBlocklist(Base):
+    __tablename__ = "token_blocklist"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    jti: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)  # JWT ID
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (UniqueConstraint("jti", name="uq_tokenblocklist_jti"),)

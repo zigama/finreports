@@ -13,4 +13,5 @@ PyJWT==2.9.0
 python-dotenv==1.2.1
 marshmallow-enum==1.5.1
 gunicorn==22.0.0
-
+alembic==1.17.2
+#psycopg2==2.9.11

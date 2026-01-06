@@ -22,7 +22,7 @@ export default function ProtectedAppLayout() {
 
 function subtitleFor(pathname = '') {
   if (pathname.startsWith('/admin/add-facility')) return 'Add Health Facility';
-  if (pathname.startsWith('/admin/catalog')) return 'Catalog Admin';
+  if (pathname.startsWith('/admin/catalog')) return 'Locations Catalog';
   if (pathname.startsWith('/reports')) return 'Reports';
   return 'Dashboard';
 }

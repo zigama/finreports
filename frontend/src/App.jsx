@@ -14,6 +14,9 @@ import BudgetSheet from './pages/BudgetSheet';
 // 👉 NEW: import the cashbook screens
 import CashbookSheet from './pages/CashbookSheet';
  import Accounts from './pages/Accounts';
+ import AdminUserCreate from "./pages/AdminUserCreate";
+import AdminUserEdit from "./pages/AdminUserEdit";
+import AdminUsers from "./pages/AdminUsers";
 
 export default function App(){
   return (
@@ -35,6 +38,11 @@ export default function App(){
         {/* 👉 NEW: Cashbook */}
         <Route path="cashbook/sheet" element={<CashbookSheet />} />
         <Route path="cashbook/accounts" element={<Accounts />} />
+
+          <Route path="admin/users/new" element={<AdminUserCreate />} />
+          <Route path="admin/users/:id/edit" element={<AdminUserEdit />} />
+          <Route path="admin/users" element={<AdminUsers />} />
+
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

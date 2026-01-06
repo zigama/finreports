@@ -48,7 +48,7 @@ export default function AppHeader({ title = 'Financial Reports Portal', subtitle
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, mr: 1 }}>
             <Button component={Link} to="/" startIcon={<DashboardIcon />} variant="text">Dashboard</Button>
             <Button component={Link} to="/admin/add-facility" startIcon={<AddBusinessIcon />} variant="text">Add Facility</Button>
-            <Button component={Link} to="/admin/catalog" startIcon={<SettingsIcon />} variant="text">Catalog</Button>
+            <Button component={Link} to="/admin/catalog" startIcon={<SettingsIcon />} variant="text">Locations Catalog</Button>
           </Box>
         )}
 
@@ -67,7 +67,7 @@ export default function AppHeader({ title = 'Financial Reports Portal', subtitle
             <AddBusinessIcon fontSize="small" style={{ marginRight: 8 }}/> Add Facility
           </MenuItem>
           <MenuItem onClick={()=>{ setAnchorEl(null); nav('/admin/catalog'); }}>
-            <SettingsIcon fontSize="small" style={{ marginRight: 8 }}/> Catalog
+            <SettingsIcon fontSize="small" style={{ marginRight: 8 }}/> Locations Catalog
           </MenuItem>
           <MenuItem onClick={()=>{ setAnchorEl(null); signOut(); }}>
             <LogoutIcon fontSize="small" style={{ marginRight: 8 }}/> Sign out
