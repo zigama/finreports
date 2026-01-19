@@ -338,26 +338,21 @@ def create_app():
         """
         claims = get_jwt()
         level = claims.get("access_level")
-
+        print(claims.values(), level, claims["facility_id"], hasattr(model, "facility_id"))
         if level == "COUNTRY":
             return query
 
-        if level == "PROVINCE" and hasattr(model, "province_id"):
+        if level == "PROVINCE":
             return query.filter(model.province_id == claims["province_id"])
 
-        if level == "DISTRICT" and hasattr(model, "district_id"):
+        if level == "DISTRICT":
             return query.filter(model.district_id == claims["district_id"])
 
         if level == "HOSPITAL":
-            if hasattr(model, "hospital_id"):
-                return query.filter(model.hospital_id == claims["hospital_id"])
-            if hasattr(model, "facility_id"):
-                return query.join(Facility).filter(
-                    Facility.hospital_id == claims["hospital_id"]
-                )
+            return query.filter(model.referral_hospital_id == claims["hospital_id"])
 
-        if level == "FACILITY" and hasattr(model, "facility_id"):
-            return query.filter(model.facility_id == claims["facility_id"])
+        if level == "FACILITY":
+            return query.filter(model.id == claims["facility_id"])
 
         return query.filter(False)  # deny by default
 
@@ -524,6 +519,7 @@ def create_app():
                 db.refresh(obj)
                 return ProvinceSchema().dump(obj), 201
             q = db.query(Province)
+            q = apply_access_filter(q, Province)
             country_id = request.args.get("country_id", type=int)
             if country_id:
                 q = q.filter(Province.country_id == country_id)
@@ -542,6 +538,7 @@ def create_app():
                 db.refresh(obj)
                 return DistrictSchema().dump(obj), 201
             q = db.query(District)
+            q = apply_access_filter(q, District)
             province_id = request.args.get("province_id", type=int)
             if province_id:
                 q = q.filter(District.province_id == province_id)
@@ -560,6 +557,7 @@ def create_app():
                 db.refresh(obj)
                 return HospitalSchema().dump(obj), 201
             q = db.query(Hospital)
+            q = apply_access_filter(q, Hospital)
             province_id = request.args.get("province_id", type=int)
             district_id = request.args.get("district_id", type=int)
             if province_id:
@@ -582,10 +580,12 @@ def create_app():
                 return FacilitySchema().dump(obj), 201
             q = db.query(Facility)
             q = apply_access_filter(q, Facility)
+            print(q)
             country_id = request.args.get("country_id", type=int)
             province_id = request.args.get("province_id", type=int)
             district_id = request.args.get("district_id", type=int)
             ref_id = request.args.get("referral_hospital_id", type=int)
+            print (country_id, province_id, district_id, ref_id)
             if country_id:
                 q = q.filter(Facility.country_id == country_id)
             if province_id:
