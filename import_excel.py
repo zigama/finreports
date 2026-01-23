@@ -3,7 +3,198 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dateutil import parser as dtparser
 from config import db_uri
-from models import Base, Province, District, Facility, BudgetLine, Quarter, QuarterLine
+from models import Base, Country, Province, District, Hospital, Facility, BudgetLine, Quarter, QuarterLine, FacilityLevelEnum, AccessLevelEnum, User
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+
+def get_or_create_country(sess, name, code):
+    obj = sess.query(Country).filter_by(code=code).one_or_none()
+    if obj:
+        return obj
+    obj = Country(name=name.strip(), code=code.strip())
+    sess.add(obj)
+    sess.flush()
+    return obj
+
+
+def get_or_create_province(sess, name, code, country_id):
+    obj = sess.execute(
+        select(Province).where(Province.code == code)
+    ).scalar_one_or_none()
+    if obj:
+        return obj
+    obj = Province(
+        name=name.strip(),
+        code=code.strip(),
+        country_id=country_id,
+    )
+    sess.add(obj)
+    sess.flush()
+    return obj
+
+
+def get_or_create_district(sess, name, code, province_id):
+    obj = sess.execute(
+        select(District).where(District.code == code)
+    ).scalar_one_or_none()
+    if obj:
+        return obj
+    obj = District(
+        name=name.strip(),
+        code=code.strip(),
+        province_id=province_id,
+    )
+    sess.add(obj)
+    sess.flush()
+    return obj
+
+
+def get_or_create_hospital(
+    sess,
+    name,
+    code,
+    level,
+    province_id,
+    district_id,
+):
+    obj = sess.execute(
+        select(Hospital).where(Hospital.code == code)
+    ).scalar_one_or_none()
+
+    if obj:
+        return obj
+
+    obj = Hospital(
+        name=name.strip(),
+        code=code.strip(),
+        level=FacilityLevelEnum(level),
+        province_id=province_id,
+        district_id=district_id,
+    )
+    sess.add(obj)
+    sess.flush()
+    return obj
+
+def get_or_create_facility(
+    sess,
+    name,
+    code,
+    level,
+    country_id,
+    province_id,
+    district_id,
+    referral_hospital_id=None,
+):
+    code = code.strip()
+
+    obj = sess.execute(
+        select(Facility).where(Facility.code == code)
+    ).scalar_one_or_none()
+
+    if obj:
+        return obj
+
+    obj = Facility(
+        name=name.strip(),
+        code=code,
+        level=FacilityLevelEnum(level),
+        country_id=country_id,
+        province_id=province_id,
+        district_id=district_id,
+        referral_hospital_id=referral_hospital_id,
+    )
+
+    sess.add(obj)
+    sess.flush()   # ensures INSERT happens now
+
+    return obj
+
+"""
+def get_or_create_facility(
+    sess,
+    name,
+    code,
+    level,
+    country_id,
+    province_id,
+    district_id,
+    referral_hospital_id=None,
+):
+    obj = sess.query(Facility).filter_by(code=code).one_or_none()
+    if obj:
+        return obj
+
+    obj = Facility(
+        name=name.strip(),
+        code=code.strip(),
+        level=FacilityLevelEnum(level),
+        country_id=country_id,
+        province_id=province_id,
+        district_id=district_id,
+        referral_hospital_id=referral_hospital_id,
+    )
+    sess.add(obj)
+    sess.flush()
+    return obj"""
+
+
+def create_facility_user(sess: Session, facility: Facility) -> User:
+    """
+    Create a login user for a facility if it does not already exist.
+    """
+    username = username_from_facility(facility.name, facility.code)
+
+    existing = sess.query(User).filter_by(username=username).one_or_none()
+    if existing:
+        return existing
+
+    user = User(
+        username=username,
+        access_level=AccessLevelEnum.FACILITY,
+        facility_id=facility.id,
+    )
+    user.set_password(facility.code)
+
+    sess.add(user)
+    sess.flush()  # assigns ID
+
+    return user
+
+def create_users_for_all_facilities(sess: Session) -> dict:
+    """
+    Creates login users for all facilities that do not yet have one.
+    """
+    facilities = sess.query(Facility).all()
+
+    created = 0
+    skipped = 0
+
+    for facility in facilities:
+        username = username_from_facility(facility.name, facility.code)
+
+        exists = sess.query(User).filter_by(username=username).first()
+        if exists:
+            skipped += 1
+            continue
+
+        user = User(
+            username=username,
+            access_level=AccessLevelEnum.FACILITY,
+            facility_id=facility.id,
+        )
+        user.set_password(facility.code)
+
+        sess.add(user)
+        created += 1
+
+    sess.commit()
+
+    return {
+        "created": created,
+        "skipped_existing": skipped,
+        "total_facilities": len(facilities),
+    }
+
 
 def first_non_empty(values):
     for v in values:
@@ -117,6 +308,19 @@ def main(xlsx_path:str):
         import_quarter(session, fac.id, xls, year=2024, quarter=1)
         session.commit()
         print(f"Imported facility '{fac.name}' in {prov.name} / {dist.name}.")
+
+def username_from_facility(name: str, code: str) -> str:
+    """
+    Takes first word of facility name + facility code
+    Example: 'Kibagabaga Health Centre', 'KBG001'
+    -> kibagabaga_KBG001
+    """
+    if not name or not code:
+        raise ValueError("Facility name and code are required")
+
+    first_word = name.strip().split()[0].lower()
+    return f"{first_word}_{code.strip()}"
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

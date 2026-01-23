@@ -7,6 +7,8 @@ from flask_smorest import Api, Blueprint
 from flask_cors import CORS
 from sqlalchemy import create_engine, func, cast, Float, Text, select
 from sqlalchemy.orm import scoped_session, sessionmaker, Session
+from sqlalchemy.exc import IntegrityError
+import pandas as pd
 
 from config import db_uri
 from models import (
@@ -41,8 +43,12 @@ from services.reporting import (
 from auth import blp_auth, init_jwt
 from flask_jwt_extended import jwt_required, get_jwt
 from werkzeug.exceptions import BadRequest, HTTPException, NotFound, Forbidden
+from import_excel import (get_or_create_country, get_or_create_province, get_or_create_district,
+                          get_or_create_hospital, get_or_create_facility, create_users_for_all_facilities)
 
 SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False))
+
+UPLOAD_ALLOWED_EXTENSIONS = {"xlsx"}
 
 
 @contextmanager
@@ -58,7 +64,8 @@ def get_session():
     finally:
         sess.close()
 
-
+def allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in UPLOAD_ALLOWED_EXTENSIONS
 def _balance_subq():
     # sum(cash_in - cash_out) per account
     return (
@@ -1356,5 +1363,104 @@ def create_app():
                 "facility_id": claims.get("facility_id"),
             } if claims else {},
         }
+
+    @app.route("/import/hierarchy", methods=["POST"])
+    def import_hierarchy():
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+
+        file = request.files["file"]
+
+        if not allowed_file(file.filename):
+            return jsonify({"error": "Invalid file type"}), 400
+
+        try:
+            df = pd.read_excel(file, dtype=str).fillna("")
+        except Exception as e:
+            return jsonify({"error": f"Failed to read Excel: {str(e)}"}), 400
+
+        sess = SessionLocal()
+
+        imported = {
+            "countries": 0,
+            "provinces": 0,
+            "districts": 0,
+            "hospitals": 0,
+            "facilities": 0,
+        }
+
+        try:
+            for _, row in df.iterrows():
+
+                # country = get_or_create_country(
+                #     sess,
+                #     row["Country"],
+                #     row["Country Code"],
+                # )
+
+                country = get_or_create_country(
+                    sess,
+                    "RWANDA",
+                    "RW",
+                )
+
+                province = get_or_create_province(
+                    sess,
+                    row["PROVINCE NAME"],
+                    row["PROVINCE CODE"],
+                    country.id,
+                )
+
+                district = get_or_create_district(
+                    sess,
+                    row["DISTRICT NAME"],
+                    row["DISTRICT CODE"],
+                    province.id,
+                )
+
+                hospital = get_or_create_hospital(
+                        sess,
+                        row["DISTRICT HOSPITAL CODE"],
+                        row["DISTRICT HOSPITAL NAME"],
+                        "District Hospital",
+                        province.id,
+                        district.id,
+                    )
+                facility = get_or_create_facility(
+                        sess,
+                        row["HEALTH CENTRE NAME"],
+                        row["HEALTH CENTRE CODE"],
+                        "Health Centre",
+                        country.id,
+                        province.id,
+                        district.id,
+                        referral_hospital_id=hospital.id if hospital else None,
+                    )
+            sess.commit()
+
+        except IntegrityError as e:
+            sess.rollback()
+            return jsonify({"error": "Database integrity error", "details": str(e)}), 400
+
+        except Exception as e:
+            sess.rollback()
+            return jsonify({"error": "Import failed", "details": str(e)}), 500
+
+        finally:
+            sess.close()
+
+        return jsonify({"status": "success", "message": "Hierarchy imported successfully"})
+
+    @app.route("/admin/create-facility-users", methods=["POST"])
+    def create_facility_users():
+        sess = SessionLocal()
+        try:
+            result = create_users_for_all_facilities(sess)
+            return jsonify({"status": "success", "result": result})
+        except Exception as e:
+            sess.rollback()
+            return jsonify({"error": str(e)}), 500
+        finally:
+            sess.close()
 
     return app
