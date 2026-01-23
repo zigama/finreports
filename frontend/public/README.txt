@@ -199,3 +199,15 @@ create admin
 ===========
 export FLASK_APP=app:create_app
 flask create_admin
+
+========================
+Create facilities
+----------------
+cd scripts/data && curl -F "file=@rapidsms_hierarchy.xlsx" http://localhost:5050/import/hierarchy
+
+UPDATE hospital SET name = code, code = name WHERE level = 'DISTRICT_HOSPITAL';
+
+
+Create facility user
+----------------------
+curl -X POST  http://localhost:5050/admin/create-facility-users

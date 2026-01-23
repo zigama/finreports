@@ -61,6 +61,20 @@ class FacilitySchema(Schema):
     district_id = fields.Int(required=True)
     referral_hospital_id = fields.Int(allow_none=True)
 
+    province = fields.Method("get_province_name", dump_only=True)
+    district = fields.Method("get_district_name", dump_only=True)
+    referral_hospital = fields.Method("get_referral_hospital_name", dump_only=True)
+
+    # ---- methods ----
+    def get_province_name(self, obj):
+        return obj.province.name if obj.province else None
+
+    def get_district_name(self, obj):
+        return obj.district.name if obj.district else None
+
+    def get_referral_hospital_name(self, obj):
+        return obj.referral_hospital.name if obj.referral_hospital else None
+
 
 # ------------------------------------------------------------
 # BUDGET CATALOGUE

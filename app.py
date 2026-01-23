@@ -1420,8 +1420,8 @@ def create_app():
 
                 hospital = get_or_create_hospital(
                         sess,
-                        row["DISTRICT HOSPITAL CODE"],
                         row["DISTRICT HOSPITAL NAME"],
+                        row["DISTRICT HOSPITAL CODE"],
                         "District Hospital",
                         province.id,
                         district.id,

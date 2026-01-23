@@ -65,6 +65,10 @@ export default function Dashboard(){
               <tr>
                 <th style={{ textAlign:'left', padding:'10px', borderBottom:'1px solid #eee' }}>ID</th>
                 <th style={{ textAlign:'left', padding:'10px', borderBottom:'1px solid #eee' }}>Name</th>
+                <th style={{ textAlign:'left', padding:'10px', borderBottom:'1px solid #eee' }}>Code</th>
+                <th style={{ textAlign:'left', padding:'10px', borderBottom:'1px solid #eee' }}>Hospital</th>
+                <th style={{ textAlign:'left', padding:'10px', borderBottom:'1px solid #eee' }}>District</th>
+                <th style={{ textAlign:'left', padding:'10px', borderBottom:'1px solid #eee' }}>Province</th>
               </tr>
             </thead>
             <tbody>
@@ -72,6 +76,10 @@ export default function Dashboard(){
                 <tr key={f.id} style={{ background: i%2 ? '#fafafa' : 'transparent' }}>
                   <td style={{ padding:'10px', borderBottom:'1px solid #f2f2f2' }}>{f.id}</td>
                   <td style={{ padding:'10px', borderBottom:'1px solid #f2f2f2' }}>{f.name}</td>
+                  <td style={{ padding:'10px', borderBottom:'1px solid #f2f2f2' }}>{f.code}</td>
+                  <td style={{ padding:'10px', borderBottom:'1px solid #f2f2f2' }}>{f.referral_hospital}</td>
+                  <td style={{ padding:'10px', borderBottom:'1px solid #f2f2f2' }}>{f.district}</td>
+                  <td style={{ padding:'10px', borderBottom:'1px solid #f2f2f2' }}>{f.province}</td>
                 </tr>
               ))}
             </tbody>
