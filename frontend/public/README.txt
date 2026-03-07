@@ -211,3 +211,19 @@ UPDATE hospital SET name = code, code = name WHERE level = 'DISTRICT_HOSPITAL';
 Create facility user
 ----------------------
 curl -X POST  http://localhost:5050/admin/create-facility-users
+
+=========
+STEP 5 — (Optional) DB Migration (Important)
+
+After modifying model, run:
+
+alembic revision --autogenerate -m "add budget period"
+alembic upgrade head
+
+
+OR manually:
+
+ALTER TABLE budgets
+ADD COLUMN start_date DATE NOT NULL,
+ADD COLUMN end_date DATE NOT NULL,
+ADD COLUMN budget_year VARCHAR(20) NOT NULL;

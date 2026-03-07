@@ -10,9 +10,11 @@ import BudgetLines from './pages/BudgetLines';
 import Activities from './pages/Activities';
 import BudgetCreate from './pages/BudgetCreate';
 import BudgetSheet from './pages/BudgetSheet';
+import BudgetImport from "./pages/BudgetImport";
 
 // 👉 NEW: import the cashbook screens
 import CashbookSheet from './pages/CashbookSheet';
+import CashbookImport   from "./pages/CashbookImport";
  import Accounts from './pages/Accounts';
  import AdminUserCreate from "./pages/AdminUserCreate";
 import AdminUserEdit from "./pages/AdminUserEdit";
@@ -34,9 +36,11 @@ export default function App(){
         <Route path="budget/activities" element={<Activities />} />
         <Route path="budget/new" element={<BudgetCreate />} />
         <Route path="budget/sheet" element={<BudgetSheet />} />
+        <Route path="budget/import" element={<BudgetImport />} />
 
         {/* 👉 NEW: Cashbook */}
         <Route path="cashbook/sheet" element={<CashbookSheet />} />
+        <Route path="cashbook/import" element={<CashbookImport />} />
         <Route path="cashbook/accounts" element={<Accounts />} />
 
           <Route path="admin/users/new" element={<AdminUserCreate />} />

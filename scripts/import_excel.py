@@ -3,7 +3,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dateutil import parser as dtparser
 from config import db_uri
-from models import Base, Province, District, Facility, BudgetLine, Quarter, QuarterLine
+from models import (Base, Province, District, Hospital, Facility, BudgetLine, Budget, Activity,
+                    Quarter, QuarterLine, compute_budget_year, initials_from_name)
+from datetime import datetime, date
+from sqlalchemy import select
+from decimal import Decimal
 
 def first_non_empty(values):
     for v in values:
@@ -95,6 +99,133 @@ def import_quarter(session, fac_id:int, xls, year:int=2024, quarter:int=1):
     # We skip auto-creation here. Users can POST /quarter-lines later or extend mapping.
 
     return q
+
+def import_budget_excel(
+    sess,
+    excel_path: str,
+    start_date_str: str,
+    end_date_str: str,
+):
+
+    # Parse dates
+    start_date = parse_date(start_date_str)
+    end_date = parse_date(end_date_str)
+
+    budget_year = compute_budget_year(start_date, end_date)
+
+    df = pd.read_excel(excel_path).fillna("")
+
+    for _, row in df.iterrows():
+
+        # ---- resolve facility ----
+        facility = sess.execute(
+            select(Facility)
+            .where(Facility.name == clean_str(row["Site"]))
+        ).scalar_one_or_none()
+
+        if not facility:
+            continue
+
+        # ---- resolve hospital ----
+        hospital = sess.execute(
+            select(Hospital)
+            .where(Hospital.name == clean_str(row["DH/Depart"]))
+        ).scalar_one_or_none()
+
+        # ---- budget line ----
+        bl_name = clean_str(row["Budget Lines"])
+        bl_code = initials_from_name(bl_name)
+
+        budget_line = sess.execute(
+            select(BudgetLine).where(BudgetLine.code == bl_code)
+        ).scalar_one_or_none()
+
+        if not budget_line:
+            budget_line = BudgetLine(
+                code=bl_code,
+                name=bl_name,
+            )
+            sess.add(budget_line)
+            sess.flush()
+
+        # ---- activity ----
+        act_name = clean_str(row["Activity"])
+        act_code = initials_from_name(act_name)
+
+        activity = sess.execute(
+            select(Activity)
+            .where(
+                Activity.budget_line_id == budget_line.id,
+                Activity.code == act_code,
+            )
+        ).scalar_one_or_none()
+
+        if not activity:
+            activity = Activity(
+                budget_line_id=budget_line.id,
+                code=act_code,
+                name=act_name,
+                description=clean_str(row["Activity  Description"]),
+            )
+            sess.add(activity)
+            sess.flush()
+
+        # ---- budget record ----
+        budget = Budget(
+
+            # NEW
+            start_date=start_date,
+            end_date=end_date,
+            budget_year=budget_year,
+            is_validated=False,
+
+            facility_id=facility.id,
+            hospital_id=hospital.id if hospital else None,
+
+            budget_line_id=budget_line.id,
+            activity_id=activity.id,
+
+            level=clean_str(row["Level"]),
+
+            estimated_number_quantity=clean_decimal(row["Estimated Number/ Quantity"]),
+            estimated_frequency_occurrence=clean_decimal(row["Estimated Frequency /occurance"]),
+
+            unit_price_usd=clean_decimal(row["Unit Price $"]),
+            cost_per_unit_rwf=clean_decimal(row["Cost per Unit Frw"]),
+
+            percent_effort_share=clean_percent(row["% of effort/ Share"]),
+
+            component_1=clean_decimal(row["Component 1"]),
+            component_2=clean_decimal(row["Component 2"]),
+            component_3=clean_decimal(row["Component 3"]),
+            component_4=clean_decimal(row["Component 4"]),
+        )
+
+        # Auto-check
+        Budget.prepare_for_insert(budget)
+
+        sess.add(budget)
+
+    sess.commit()
+
+def clean_str(v):
+    return str(v).strip() if v not in (None, "", "nan") else None
+
+def clean_decimal(v):
+    if v in (None, "", "nan"):
+        return None
+    return Decimal(str(v).replace(",", ""))
+
+def clean_percent(v):
+    if not v:
+        return None
+    return float(str(v).replace("%", ""))
+def parse_date(value: str) -> date:
+
+    if not value:
+        raise ValueError("Date is required")
+
+    return datetime.strptime(value.strip(), "%d-%m-%Y").date()
 
 def main(xlsx_path:str):
     engine = create_engine(db_uri(), future=True)

@@ -17,6 +17,7 @@ from sqlalchemy import (
     select,
     and_,
     CheckConstraint,
+    Boolean
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 import enum
@@ -176,6 +177,27 @@ class Budget(Base):
     component_3: Mapped[Numeric | None] = mapped_column(Numeric(14, 2))
     component_4: Mapped[Numeric | None] = mapped_column(Numeric(14, 2))
 
+    start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+
+    budget_year: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+
+    is_validated: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        index=True,
+    )
+
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    validated_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("auth_user.id")
+    )
+
+    validated_by: Mapped["User | None"] = relationship()
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     budget_line: Mapped["BudgetLine"] = relationship("BudgetLine")
@@ -183,6 +205,33 @@ class Budget(Base):
 
     def __repr__(self):
         return f"<Budget id={self.id} BL={self.budget_line_id} ACT={self.activity_id}>"
+
+    @classmethod
+    def prepare_for_insert(cls, budget: "Budget"):
+        if not budget.start_date or not budget.end_date:
+            raise ValueError("start_date and end_date are required")
+
+        budget.budget_year = compute_budget_year(
+            budget.start_date,
+            budget.end_date
+        )
+
+    @classmethod
+    def validate_budget(cls, sess, budget_id: int, user_id: int):
+
+        budget = sess.get(cls, budget_id)
+
+        if not budget:
+            raise ValueError("Budget not found")
+
+        if budget.is_validated:
+            raise ValueError("Budget already validated")
+
+        budget.is_validated = True
+        budget.validated_at = datetime.utcnow()
+        budget.validated_by_id = user_id
+
+        sess.flush()
 
 
 # --- Quarter, cashbook entry, obligations etc (old model) ---
@@ -531,3 +580,12 @@ class TokenBlocklist(Base):
     jti: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)  # JWT ID
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (UniqueConstraint("jti", name="uq_tokenblocklist_jti"),)
+
+
+
+def compute_budget_year(start: date, end: date) -> str:
+
+    if start.year == end.year:
+        return str(start.year)
+
+    return f"{start.year}-{end.year}"

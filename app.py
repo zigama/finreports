@@ -41,7 +41,7 @@ from services.reporting import (
     build_reallocation_report,
 )
 from auth import blp_auth, init_jwt
-from flask_jwt_extended import jwt_required, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from werkzeug.exceptions import BadRequest, HTTPException, NotFound, Forbidden
 from import_excel import (get_or_create_country, get_or_create_province, get_or_create_district,
                           get_or_create_hospital, get_or_create_facility, create_users_for_all_facilities)
@@ -443,6 +443,30 @@ def create_app():
             sess.flush()  # assign id
             sess.refresh(u)
             return jsonify(_user_to_dict(u)), 201
+
+    @app.route("/admin/budgets/<int:budget_id>/validate", methods=["POST"])
+    @jwt_required()  # if using JWT
+    def validate_budget(budget_id):
+        _require_country_admin()
+        user_id = get_jwt_identity()
+        sess = SessionLocal()
+
+        try:
+            Budget.validate_budget(sess, budget_id, user_id)
+
+            sess.commit()
+
+            return jsonify({
+                "status": "success",
+                "message": "Budget validated"
+            })
+
+        except Exception as e:
+            sess.rollback()
+            return jsonify({"error": str(e)}), 400
+
+        finally:
+            sess.close()
 
     @blp_admin.route("/users/<int:user_id>", methods=["PUT", "PATCH"])
     @jwt_required()

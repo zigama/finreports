@@ -73,6 +73,11 @@ export default function Layout({ title, subtitle, children, maxWidth = 'lg' }) {
           <ListItemIcon><SaveIcon/></ListItemIcon>
           <ListItemText primary="Budget Sheet"/>
         </ListItemButton>
+
+        <ListItemButton selected={loc.pathname.startsWith('/budget/import')} onClick={()=>go('/budget/import')}>
+          <ListItemIcon><SaveIcon/></ListItemIcon>
+          <ListItemText primary="Budget Import"/>
+        </ListItemButton>
       </List>
 
       {/* CASHBOOK */}
@@ -80,6 +85,11 @@ export default function Layout({ title, subtitle, children, maxWidth = 'lg' }) {
         <ListItemButton selected={loc.pathname.startsWith('/cashbook/sheet')} onClick={()=>go('/cashbook/sheet')}>
           <ListItemIcon><ReceiptLongIcon/></ListItemIcon>
           <ListItemText primary="Cashbook Sheet"/>
+        </ListItemButton>
+
+        <ListItemButton selected={loc.pathname.startsWith('/cashbook/import')} onClick={()=>go('/cashbook/import')}>
+          <ListItemIcon><ReceiptLongIcon/></ListItemIcon>
+          <ListItemText primary="Import Cashbook"/>
         </ListItemButton>
 
         <ListItemButton selected={loc.pathname.startsWith('/cashbook/accounts')} onClick={()=>go('/cashbook/accounts')}>

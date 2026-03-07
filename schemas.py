@@ -124,6 +124,17 @@ class BudgetSchema(Schema):
     component_3 = fields.Decimal(allow_none=True, as_string=True)
     component_4 = fields.Decimal(allow_none=True, as_string=True)
 
+    start_date = fields.Date(required=True)
+    end_date = fields.Date(required=True)
+
+    budget_year = fields.Str(dump_only=True)
+
+    is_validated = fields.Bool(dump_only=True)
+
+    validated_at = fields.DateTime(dump_only=True)
+
+    validated_by_id = fields.Int(dump_only=True)
+
     created_at = fields.DateTime(dump_only=True)
 
     @validates_schema
