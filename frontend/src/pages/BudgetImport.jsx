@@ -9,13 +9,18 @@ import {
   Stack,
   Alert
 } from "@mui/material";
+
 import UploadIcon from "@mui/icons-material/Upload";
 import DownloadIcon from "@mui/icons-material/Download";
+
 import * as XLSX from "xlsx";
 
-import { budgeting, catalog } from "../api/client";
+import { budgeting } from "../api/client";
+import { useUser } from "../hooks/useUser";
 
 export default function BudgetImport(){
+
+  const { hospitalId, facilityId, accessLevel } = useUser()
 
   const [rows,setRows] = useState([])
   const [error,setError] = useState("")
@@ -24,24 +29,18 @@ export default function BudgetImport(){
 
   const [lines,setLines] = useState([])
   const [activities,setActivities] = useState([])
-  const [hospitals,setHospitals] = useState([])
-  const [facilities,setFacilities] = useState([])
 
   useEffect(()=>{
 
     (async()=>{
 
-      const [bl,acts,hos,fac] = await Promise.all([
+      const [bl,acts] = await Promise.all([
         budgeting.listBudgetLines(),
-        budgeting.listActivities(),
-        catalog.hospitals(),
-        catalog.facilities()
+        budgeting.listActivities()
       ])
 
       setLines(bl||[])
       setActivities(acts||[])
-      setHospitals(hos||[])
-      setFacilities(fac||[])
 
     })()
 
@@ -69,28 +68,28 @@ export default function BudgetImport(){
 
         row:i+2,
 
-        hospital_id: mapCodeToId(r.hospital_code,hospitals),
-        facility_id: mapCodeToId(r.facility_code,facilities),
+        // automatically from logged user
+        hospital_id: hospitalId || null,
+        facility_id: facilityId || null,
+        level: accessLevel || null,
 
-        level:r.level ?? null,
+        budget_line_id: mapCodeToId(r["Budget Lines"],lines),
+        activity_id: mapCodeToId(r["Activity"],activities),
 
-        budget_line_id: mapCodeToId(r.budget_line_code,lines),
-        activity_id: mapCodeToId(r.activity_code,activities),
+        activity_description:r["Activity  Description"] ?? null,
 
-        activity_description:r.activity_description ?? null,
+        estimated_number_quantity:r["Estimated Number/ Quantity"] ?? null,
+        estimated_frequency_occurrence:r["Estimated Frequency /occurance"] ?? null,
 
-        estimated_number_quantity:r.estimated_number_quantity ?? null,
-        estimated_frequency_occurrence:r.estimated_frequency_occurrence ?? null,
+        unit_price_usd:r["Unit Price $"] ?? null,
+        cost_per_unit_rwf:r["Cost per Unit Frw"] ?? null,
 
-        unit_price_usd:r.unit_price_usd ?? null,
-        cost_per_unit_rwf:r.cost_per_unit_rwf ?? null,
+        percent_effort_share:r["% of effort/ Share"] ?? null,
 
-        percent_effort_share:r.percent_effort_share ?? null,
-
-        component_1:r.component_1 ?? null,
-        component_2:r.component_2 ?? null,
-        component_3:r.component_3 ?? null,
-        component_4:r.component_4 ?? null
+        component_1:r["Component 1"] ?? null,
+        component_2:r["Component 2"] ?? null,
+        component_3:r["Component 3"] ?? null,
+        component_4:r["Component 4"] ?? null
 
       }))
 
@@ -107,13 +106,10 @@ export default function BudgetImport(){
     for(const r of rows){
 
       if(!r.budget_line_id)
-        return `Row ${r.row}: invalid budget_line_code`
+        return `Row ${r.row}: invalid Budget Lines`
 
       if(!r.activity_id)
-        return `Row ${r.row}: invalid activity_code`
-
-      if(!r.hospital_id && !r.facility_id)
-        return `Row ${r.row}: hospital_code or facility_code required`
+        return `Row ${r.row}: invalid Activity`
     }
 
     return null
@@ -141,9 +137,10 @@ export default function BudgetImport(){
 
           hospital_id:r.hospital_id,
           facility_id:r.facility_id,
+          level:r.level,
+
           budget_line_id:r.budget_line_id,
           activity_id:r.activity_id,
-          level:r.level,
           activity_description:r.activity_description,
 
           estimated_number_quantity:r.estimated_number_quantity,
@@ -163,7 +160,6 @@ export default function BudgetImport(){
       }
 
       setSuccess("Budget import completed")
-
       setRows([])
 
     }
@@ -179,27 +175,19 @@ export default function BudgetImport(){
 
     const template=[{
 
-      hospital_code:"",
-      facility_code:"",
-      level:"",
-
-      budget_line_code:"",
-      activity_code:"",
-
-      activity_description:"",
-
-      estimated_number_quantity:"",
-      estimated_frequency_occurrence:"",
-
-      unit_price_usd:"",
-      cost_per_unit_rwf:"",
-
-      percent_effort_share:"",
-
-      component_1:"",
-      component_2:"",
-      component_3:"",
-      component_4:""
+      "Budget Lines":"",
+      "Activity":"",
+      "Activity  Description":"",
+      "Activity Level":"",
+      "Estimated Number/ Quantity":"",
+      "Estimated Frequency /occurance":"",
+      "Unit Price $":"",
+      "Cost per Unit Frw":"",
+      "% of effort/ Share":"",
+      "Component 1":"",
+      "Component 2":"",
+      "Component 3":"",
+      "Component 4":""
 
     }]
 

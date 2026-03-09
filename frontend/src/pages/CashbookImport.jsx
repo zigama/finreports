@@ -1,3 +1,5 @@
+// src/pages/CashbookImport.jsx
+
 import React, { useState, useEffect } from "react";
 import {
   Paper,
@@ -7,37 +9,35 @@ import {
   Stack,
   Alert
 } from "@mui/material";
+
 import UploadIcon from "@mui/icons-material/Upload";
 import DownloadIcon from "@mui/icons-material/Download";
 import * as XLSX from "xlsx";
 
-import { cashbook, budgeting, catalog } from "../api/client";
+import { cashbook, budgeting } from "../api/client";
+import { useUser } from "../hooks/useUser";
 
 export default function CashbookImport() {
+
+  const { hospitalId, facilityId } = useUser()
 
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [hospitals,setHospitals]=useState([])
-  const [facilities,setFacilities]=useState([])
   const [accounts,setAccounts]=useState([])
   const [lines,setLines]=useState([])
   const [activities,setActivities]=useState([])
 
   useEffect(()=>{
     (async()=>{
-      const [hos,fac,acc,bl,act]=await Promise.all([
-        catalog.hospitals(),
-        catalog.facilities(),
+      const [acc,bl,act]=await Promise.all([
         cashbook.listAccounts?.() ?? [],
         budgeting.listBudgetLines(),
         budgeting.listActivities()
       ])
 
-      setHospitals(hos||[])
-      setFacilities(fac||[])
       setAccounts(acc||[])
       setLines(bl||[])
       setActivities(act||[])
@@ -70,23 +70,25 @@ export default function CashbookImport() {
       const parsed=data.map((r,i)=>({
 
         row:i+2,
-        transaction_date:r.transaction_date,
 
-        hospital_id: mapCodeToId(r.hospital_code,hospitals),
-        facility_id: mapCodeToId(r.facility_code,facilities),
+        transaction_date:r["Transaction Date"],
 
-        account_id: mapNameToId(r.account_name,accounts),
+        // auto assign from logged user
+        hospital_id:hospitalId || null,
+        facility_id:facilityId || null,
 
-        vat_requirement:r.vat_requirement ?? "VAT_NOT_REQUIRED",
+        account_id: mapNameToId(r["Account"],accounts),
 
-        description:r.description,
+        vat_requirement:r["VAT Requirement"] ?? "VAT_NOT_REQUIRED",
 
-        budget_line_id: mapCodeToId(r.budget_line_code,lines),
+        description:r["Description"],
 
-        activity_id: mapCodeToId(r.activity_code,activities),
+        budget_line_id: mapCodeToId(r["Budget Line"],lines),
 
-        cash_in:r.cash_in ?? null,
-        cash_out:r.cash_out ?? null
+        activity_id: mapCodeToId(r["Activity"],activities),
+
+        cash_in:r["Cash In"] ?? null,
+        cash_out:r["Cash Out"] ?? null
 
       }))
 
@@ -101,22 +103,19 @@ export default function CashbookImport() {
     for(const r of rows){
 
       if(!r.transaction_date)
-        return `Row ${r.row}: transaction_date required`
+        return `Row ${r.row}: Transaction Date required`
 
       if(!r.account_id)
-        return `Row ${r.row}: invalid account_name`
+        return `Row ${r.row}: invalid Account`
 
       if(!r.budget_line_id)
-        return `Row ${r.row}: invalid budget_line_code`
+        return `Row ${r.row}: invalid Budget Line`
 
       if(!r.activity_id)
-        return `Row ${r.row}: invalid activity_code`
-
-      if(!r.hospital_id && !r.facility_id)
-        return `Row ${r.row}: hospital_code or facility_code required`
+        return `Row ${r.row}: invalid Activity`
 
       if(r.cash_in && r.cash_out)
-        return `Row ${r.row}: cannot have cash_in AND cash_out`
+        return `Row ${r.row}: cannot have Cash In AND Cash Out`
     }
 
     return null
@@ -143,13 +142,17 @@ export default function CashbookImport() {
         await cashbook.create({
 
           transaction_date:r.transaction_date,
+
           hospital_id:r.hospital_id,
           facility_id:r.facility_id,
+
           account_id:r.account_id,
           vat_requirement:r.vat_requirement,
           description:r.description,
+
           budget_line_id:r.budget_line_id,
           activity_id:r.activity_id,
+
           cash_in:r.cash_in,
           cash_out:r.cash_out
 
@@ -157,8 +160,7 @@ export default function CashbookImport() {
 
       }
 
-      setSuccess("Import completed")
-
+      setSuccess("Cashbook import completed")
       setRows([])
 
     }catch(e){
@@ -172,16 +174,14 @@ export default function CashbookImport() {
 
     const template=[{
 
-      transaction_date:"",
-      hospital_code:"",
-      facility_code:"",
-      account_name:"",
-      vat_requirement:"VAT_NOT_REQUIRED",
-      description:"",
-      budget_line_code:"",
-      activity_code:"",
-      cash_in:"",
-      cash_out:""
+      "Transaction Date":"",
+      "Account":"",
+      "VAT Requirement":"VAT_NOT_REQUIRED",
+      "Description":"",
+      "Budget Line":"",
+      "Activity":"",
+      "Cash In":"",
+      "Cash Out":""
 
     }]
 

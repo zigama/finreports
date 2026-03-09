@@ -227,3 +227,12 @@ ALTER TABLE budgets
 ADD COLUMN start_date DATE NOT NULL,
 ADD COLUMN end_date DATE NOT NULL,
 ADD COLUMN budget_year VARCHAR(20) NOT NULL;
+
+ALTER TABLE budgets
+ADD COLUMN is_validated BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE budgets
+ADD COLUMN validated_at TIMESTAMP;
+
+ALTER TABLE budgets
+ADD COLUMN validated_by_id UUID;
