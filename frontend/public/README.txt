@@ -235,4 +235,4 @@ ALTER TABLE budgets
 ADD COLUMN validated_at TIMESTAMP;
 
 ALTER TABLE budgets
-ADD COLUMN validated_by_id UUID;
+ADD COLUMN validated_by_id INTEGER;

@@ -679,6 +679,7 @@ def create_app():
 
         with app.session_factory() as db:
             if request.method == "POST":
+                print(request.json)
                 payload = BudgetSchema().load(request.json)
 
                 bl = db.query(BudgetLine).get(payload["budget_line_id"])
@@ -700,6 +701,7 @@ def create_app():
                     payload["hospital_id"] = fac.referral_hospital_id
 
                 obj = Budget(**payload)
+                Budget.prepare_for_insert(obj)
                 db.add(obj)
                 db.commit()
                 db.refresh(obj)
